@@ -7,7 +7,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from .auth import require_agent_or_above
+# Authentication removed for PoC simplicity
 from ..components.data_access import loan_data_access, DataAccessError
 from ..components.calculator import payoff_calculator, CalculationError
 from ..models.payoff import PayoffCalculationRequest, PayoffCalculationResponse
@@ -19,10 +19,7 @@ router = APIRouter(prefix="/api", tags=["tools"])
 
 
 @router.post("/calculate-payoff", response_model=PayoffCalculationResponse)
-async def calculate_payoff(
-    calculation_request: PayoffCalculationRequest,
-    current_user: dict = Depends(require_agent_or_above)
-):
+async def calculate_payoff(calculation_request: PayoffCalculationRequest):
     """
     Calculate payoff amount for a loan.
     
@@ -35,13 +32,11 @@ async def calculate_payoff(
     
     Args:
         calculation_request: Request containing loan number and optional calculation date
-        current_user: Current authenticated user
         
     Returns:
         PayoffCalculationResponse with calculation results
     """
-    logger.info(f"Payoff calculation request for loan {calculation_request.loan_number} "
-               f"by user: {current_user['username']}")
+    logger.info(f"Payoff calculation request for loan {calculation_request.loan_number}")
     
     try:
         # Check if loan data is loaded
@@ -112,8 +107,7 @@ async def calculate_payoff(
 @router.get("/calculate-payoff/{loan_number}", response_model=PayoffCalculationResponse)
 async def calculate_payoff_by_number(
     loan_number: str,
-    as_of_date: Optional[str] = None,
-    current_user: dict = Depends(require_agent_or_above)
+    as_of_date: Optional[str] = None
 ):
     """
     Calculate payoff amount for a loan by loan number (GET endpoint).
@@ -121,7 +115,6 @@ async def calculate_payoff_by_number(
     Args:
         loan_number: Loan number to calculate payoff for
         as_of_date: Optional calculation date in YYYY-MM-DD format
-        current_user: Current authenticated user
         
     Returns:
         PayoffCalculationResponse with calculation results
@@ -144,23 +137,18 @@ async def calculate_payoff_by_number(
         as_of_date=calculation_date
     )
     
-    return await calculate_payoff(request, current_user)
+    return await calculate_payoff(request)
 
 
 @router.get("/tools/available")
-async def get_available_tools(current_user: dict = Depends(require_agent_or_above)):
+async def get_available_tools():
     """
-    Get list of available tools for the current user based on their role.
+    Get list of all available tools (no authentication required).
     
-    Args:
-        current_user: Current authenticated user
-        
     Returns:
         Dictionary of available tools and their descriptions
     """
-    user_role = current_user.get('role', 'agent')
-    
-    # Base tools available to all authenticated users (agent and above)
+    # All tools available in PoC without role restrictions
     tools = {
         "loan_search": {
             "name": "Loan Search",
@@ -168,8 +156,7 @@ async def get_available_tools(current_user: dict = Depends(require_agent_or_abov
             "endpoints": [
                 "GET /api/loan/{identifier}",
                 "POST /api/loan/search"
-            ],
-            "required_role": "agent"
+            ]
         },
         "payoff_calculation": {
             "name": "Payoff Calculation",
@@ -177,42 +164,20 @@ async def get_available_tools(current_user: dict = Depends(require_agent_or_abov
             "endpoints": [
                 "POST /api/calculate-payoff",
                 "GET /api/calculate-payoff/{loan_number}"
-            ],
-            "required_role": "agent"
+            ]
+        },
+        "data_management": {
+            "name": "Data Management",
+            "description": "Load and manage loan data files",
+            "endpoints": [
+                "POST /api/admin/load-data",
+                "GET /api/admin/data-info"
+            ]
         }
     }
     
-    # Additional tools for supervisors and admins
-    if user_role in ['supervisor', 'admin']:
-        tools.update({
-            "data_management": {
-                "name": "Data Management",
-                "description": "Load and manage loan data files",
-                "endpoints": [
-                    "POST /api/admin/load-data",
-                    "GET /api/admin/data-info"
-                ],
-                "required_role": "supervisor"
-            }
-        })
-    
-    # Admin-only tools
-    if user_role == 'admin':
-        tools.update({
-            "user_management": {
-                "name": "User Management",
-                "description": "Manage user accounts and permissions",
-                "endpoints": [
-                    "GET /api/admin/users",
-                    "POST /api/admin/users"
-                ],
-                "required_role": "admin"
-            }
-        })
-    
     return {
         "success": True,
-        "user_role": user_role,
         "available_tools": tools
     }
 

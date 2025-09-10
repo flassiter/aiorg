@@ -20,38 +20,29 @@ async def test_api():
             print(f"Health check status: {response.status_code}")
             print(f"Health check response: {response.json()}")
             
-            # Test authentication
-            print("\nTesting authentication...")
-            auth_data = {
-                "username": "loan_agent",
-                "password": "agent123"
-            }
-            response = await client.post(f"{base_url}/api/auth/login", json=auth_data)
-            print(f"Login status: {response.status_code}")
-            auth_response = response.json()
-            print(f"Login response: {auth_response}")
+            # Test data info (no authentication required)
+            print("\nTesting data info...")
+            response = await client.get(f"{base_url}/api/admin/data-info")
+            print(f"Data info status: {response.status_code}")
+            print(f"Data info response: {response.json()}")
             
-            if auth_response.get("success"):
-                api_key = auth_response["api_key"]
-                headers = {"Authorization": f"Bearer {api_key}"}
-                
-                # Test data info
-                print("\nTesting data info...")
-                response = await client.get(f"{base_url}/api/admin/data-info", headers=headers)
-                print(f"Data info status: {response.status_code}")
-                print(f"Data info response: {response.json()}")
-                
-                # Test loan search
-                print("\nTesting loan search (if data is loaded)...")
-                response = await client.get(f"{base_url}/api/loan/123456", headers=headers)
-                print(f"Loan search status: {response.status_code}")
-                print(f"Loan search response: {response.json()}")
-                
-                # Test user info
-                print("\nTesting user info...")
-                response = await client.get(f"{base_url}/api/user/info", headers=headers)
-                print(f"User info status: {response.status_code}")
-                print(f"User info response: {response.json()}")
+            # Test loan search (no authentication required)
+            print("\nTesting loan search (if data is loaded)...")
+            response = await client.get(f"{base_url}/api/loan/123456")
+            print(f"Loan search status: {response.status_code}")
+            print(f"Loan search response: {response.json()}")
+            
+            # Test available tools
+            print("\nTesting available tools...")
+            response = await client.get(f"{base_url}/api/tools/available")
+            print(f"Tools status: {response.status_code}")
+            print(f"Tools response: {response.json()}")
+            
+            # Test tools health
+            print("\nTesting tools health...")
+            response = await client.get(f"{base_url}/api/tools/health")
+            print(f"Tools health status: {response.status_code}")
+            print(f"Tools health response: {response.json()}")
                 
         except httpx.ConnectError:
             print("API server is not running. Start it with:")

@@ -6,21 +6,14 @@ from contextlib import asynccontextmanager
 from datetime import date
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Depends, status
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, HTTPException, status
+# CORS middleware removed for PoC simplicity
 from fastapi.responses import JSONResponse
 
-from .api.auth import (
-    login, 
-    require_agent_or_above, 
-    cleanup_expired_keys,
-    get_current_active_user
-)
+# Authentication removed for PoC simplicity
 from .api.tools import router as tools_router
 from .components.data_access import loan_data_access, DataAccessError
 from .models.loan import (
-    AuthRequest, 
-    AuthResponse, 
     HealthCheckResponse,
     LoanResponse,
     LoanSearchRequest
@@ -55,7 +48,7 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     logger.info("Shutting down MiLA API...")
-    await cleanup_expired_keys()
+    # No cleanup needed without authentication
 
 
 # Create FastAPI application
@@ -66,14 +59,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # In production, specify actual origins
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS middleware removed for PoC simplicity
 
 # Include routers
 app.include_router(tools_router)
@@ -125,46 +111,22 @@ async def health_check():
     )
 
 
-# Authentication endpoints
-@app.post("/api/auth/login", response_model=AuthResponse)
-async def login_endpoint(auth_request: AuthRequest):
-    """
-    User login endpoint.
-    
-    Args:
-        auth_request: Authentication request with username and password
-        
-    Returns:
-        AuthResponse with API key if successful
-    """
-    logger.info(f"Login attempt for user: {auth_request.username}")
-    response = await login(auth_request)
-    
-    if response.success:
-        logger.info(f"Successful login for user: {auth_request.username}")
-    else:
-        logger.warning(f"Failed login attempt for user: {auth_request.username}")
-    
-    return response
+# Authentication removed for PoC simplicity
 
 
 # Loan data endpoints
 @app.get("/api/loan/{identifier}", response_model=LoanResponse)
-async def get_loan(
-    identifier: str,
-    current_user: dict = Depends(require_agent_or_above)
-):
+async def get_loan(identifier: str):
     """
     Get loan information by loan number or borrower name.
     
     Args:
         identifier: Loan number or borrower name
-        current_user: Current authenticated user
         
     Returns:
         LoanResponse with loan data if found
     """
-    logger.info(f"Loan search request: '{identifier}' by user: {current_user['username']}")
+    logger.info(f"Loan search request: '{identifier}'")
     
     if not loan_data_access.is_data_loaded():
         raise HTTPException(
@@ -192,40 +154,32 @@ async def get_loan(
 
 
 @app.post("/api/loan/search", response_model=LoanResponse)
-async def search_loan(
-    search_request: LoanSearchRequest,
-    current_user: dict = Depends(require_agent_or_above)
-):
+async def search_loan(search_request: LoanSearchRequest):
     """
     Search for loan information.
     
     Args:
         search_request: Search request with identifier
-        current_user: Current authenticated user
         
     Returns:
         LoanResponse with loan data if found
     """
-    return await get_loan(search_request.identifier, current_user)
+    return await get_loan(search_request.identifier)
 
 
 # Data management endpoints (admin only)
 @app.post("/api/admin/load-data")
-async def load_loan_data(
-    file_path: str,
-    current_user: dict = Depends(require_agent_or_above)
-):
+async def load_loan_data(file_path: str):
     """
     Load loan data from an Excel file.
     
     Args:
         file_path: Path to Excel file
-        current_user: Current authenticated user
         
     Returns:
         Success response with number of records loaded
     """
-    logger.info(f"Load data request: {file_path} by user: {current_user['username']}")
+    logger.info(f"Load data request: {file_path}")
     
     try:
         loans = await loan_data_access.load_loan_data(file_path)
@@ -246,13 +200,10 @@ async def load_loan_data(
 
 
 @app.get("/api/admin/data-info")
-async def get_data_info(current_user: dict = Depends(require_agent_or_above)):
+async def get_data_info():
     """
     Get information about currently loaded data.
     
-    Args:
-        current_user: Current authenticated user
-        
     Returns:
         Data information
     """
@@ -264,25 +215,7 @@ async def get_data_info(current_user: dict = Depends(require_agent_or_above)):
     }
 
 
-# User information endpoint
-@app.get("/api/user/info")
-async def get_user_info(current_user: dict = Depends(get_current_active_user)):
-    """
-    Get current user information.
-    
-    Args:
-        current_user: Current authenticated user
-        
-    Returns:
-        User information
-    """
-    return {
-        "success": True,
-        "user": {
-            "username": current_user["username"],
-            "role": current_user["role"]
-        }
-    }
+# User information endpoint removed (no authentication)
 
 
 if __name__ == "__main__":

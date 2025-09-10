@@ -101,19 +101,4 @@ class HealthCheckResponse(BaseModel):
     version: str = "1.0.0"
 
 
-class AuthRequest(BaseModel):
-    """
-    Authentication request model.
-    """
-    username: str = Field(..., min_length=1)
-    password: str = Field(..., min_length=1)
-
-
-class AuthResponse(BaseModel):
-    """
-    Authentication response model.
-    """
-    success: bool
-    message: str
-    api_key: Optional[str] = None
-    expires_in: Optional[int] = None
+# Authentication models removed for PoC simplicity
