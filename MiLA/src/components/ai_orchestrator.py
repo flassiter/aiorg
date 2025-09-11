@@ -273,23 +273,24 @@ You have access to the following tools:
 4. send_email(email_address, loan_number) - Send payoff information via email
 5. confirm_email(email_address) - Confirm email sending with user
 
-Guidelines:
+Response Guidelines:
+- Use tools when you need to retrieve, calculate, or generate new information
+- Answer directly from context when you already have the information
+- For simple questions about current loan details (like "what email address is on that loan"), respond directly if you have the information in context
 - Always search for loan information first when given a name or loan number
 - Use exact loan numbers when available from context
 - When users refer to "this loan", "the loan", or "current loan", use the loan number from the current context
-- For complete payoff processing: get loan info → calculate payoff → generate PDF → (optionally) send email
-- For email requests, always confirm with user before sending
-- Provide clear, professional responses with specific dollar amounts
-- Format currency as $X,XXX.XX
-- Handle multi-step workflows seamlessly using context from previous steps
-- Handle errors gracefully and suggest alternatives
 
-Workflow Examples:
+Tool Usage Examples:
 - "Show me loan information for Mark Wilson" → get_loan_info("Mark Wilson")
 - "Calculate payoff for loan 69253358" → get_loan_info("69253358") → calculate_payoff()
 - "Calculate payoff for this loan" → calculate_payoff() (using current loan from context)
 - "Process complete payoff for John Doe" → get_loan_info("John Doe") → calculate_payoff() → generate_pdf()
-- "Send payoff info by email" → confirm_email(borrower_email) → (if confirmed) send_email()
+
+Direct Response Examples:
+- "What email address is on that loan?" → Answer directly if you have the borrower email in context
+- "What's the borrower's name?" → Answer directly if you have the loan information in context
+- "What loan number are we working with?" → Answer directly if you have the current loan number in context
 
 Context Awareness:
 - Use loan information from previous steps when available
@@ -343,6 +344,24 @@ Always respond professionally and include specific details from tool results."""
             # Parse tool calls from AI response
             tool_calls = self.parse_tool_calls(ai_response)
             
+            # Check if AI provided a direct response without tools
+            ai_content = ai_response.get("message", {}).get("content", "")
+            if not tool_calls and ai_content.strip():
+                # AI answered from context without needing tools
+                await session_manager.update_context_from_message(
+                    session.session_id,
+                    message,
+                    ai_content.strip()
+                )
+                
+                return ChatResponse(
+                    message=ai_content.strip(),
+                    tool_calls=[],
+                    files_generated=[],
+                    success=True,
+                    session_id=session.session_id
+                )
+            
             # Execute tool sequence with session context
             tool_results = await self.execute_tool_sequence(tool_calls, session.context)
             
@@ -357,7 +376,7 @@ Always respond professionally and include specific details from tool results."""
             # Format final response
             response_text = self.format_markdown_response(
                 tool_results, 
-                ai_response.get("message", {}).get("content", ""),
+                ai_content,
                 debug_mode=session.context.debug_mode
             )
             
