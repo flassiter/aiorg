@@ -3,6 +3,7 @@ API tools endpoints for loan payoff calculations.
 """
 import logging
 from datetime import date
+from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -10,7 +11,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 # Authentication removed for PoC simplicity
 from ..components.data_access import loan_data_access, DataAccessError
 from ..components.calculator import payoff_calculator, CalculationError
+from ..components.pdf_generator import pdf_generator, PDFGenerationError
 from ..models.payoff import PayoffCalculationRequest, PayoffCalculationResponse
+from ..models.pdf_data import PDFGenerationRequest, PDFGenerationResponse
 
 logger = logging.getLogger(__name__)
 
@@ -140,6 +143,105 @@ async def calculate_payoff_by_number(
     return await calculate_payoff(request)
 
 
+@router.post("/generate-pdf", response_model=PDFGenerationResponse)
+async def generate_payoff_pdf(pdf_request: PDFGenerationRequest):
+    """
+    Generate a payoff statement PDF for a loan.
+    
+    Creates a professional PDF document containing:
+    - Company header (MiLA Loan Services)
+    - Borrower and loan information
+    - Payment breakdown (principal + interest)
+    - Total payoff amount
+    - Statement date and good-through date
+    
+    Args:
+        pdf_request: Request containing loan number and optional statement date
+        
+    Returns:
+        PDFGenerationResponse with PDF filename and download URL
+    """
+    logger.info(f"PDF generation request for loan {pdf_request.loan_number}")
+    
+    try:
+        # Check if loan data is loaded
+        if not loan_data_access.is_data_loaded():
+            logger.error("Loan data not loaded")
+            return PDFGenerationResponse(
+                success=False,
+                message="Loan data not loaded. Please contact administrator."
+            )
+        
+        # Find the loan record
+        loan_record = await loan_data_access.find_loan_by_number(pdf_request.loan_number)
+        
+        if not loan_record:
+            logger.info(f"Loan not found: {pdf_request.loan_number}")
+            return PDFGenerationResponse(
+                success=False,
+                message=f"Loan not found: {pdf_request.loan_number}"
+            )
+        
+        # Calculate current payoff amount
+        payoff_calculation = payoff_calculator.calculate_payoff(
+            loan_record, 
+            pdf_request.statement_date
+        )
+        
+        # Generate PDF
+        pdf_path = pdf_generator.generate_payoff_statement(
+            loan_record, 
+            payoff_calculation, 
+            pdf_request.statement_date
+        )
+        
+        # Extract filename from path
+        filename = Path(pdf_path).name
+        
+        # Create download URL
+        download_url = f"/api/files/{filename}"
+        
+        # Clean up old files (older than 24 hours)
+        pdf_generator.cleanup_old_files(max_age_hours=24)
+        
+        logger.info(f"PDF generated successfully for loan {pdf_request.loan_number}: {filename}")
+        
+        return PDFGenerationResponse(
+            success=True,
+            message=f"Payoff statement PDF generated for loan {pdf_request.loan_number}",
+            filename=filename,
+            download_url=download_url
+        )
+        
+    except CalculationError as e:
+        logger.error(f"Calculation error during PDF generation for loan {pdf_request.loan_number}: {str(e)}")
+        return PDFGenerationResponse(
+            success=False,
+            message=f"Calculation error: {str(e)}"
+        )
+        
+    except PDFGenerationError as e:
+        logger.error(f"PDF generation error for loan {pdf_request.loan_number}: {str(e)}")
+        return PDFGenerationResponse(
+            success=False,
+            message=f"PDF generation error: {str(e)}"
+        )
+        
+    except DataAccessError as e:
+        logger.error(f"Data access error during PDF generation: {str(e)}")
+        return PDFGenerationResponse(
+            success=False,
+            message=f"Data access error: {str(e)}"
+        )
+        
+    except Exception as e:
+        logger.error(f"Unexpected error during PDF generation: {str(e)}")
+        return PDFGenerationResponse(
+            success=False,
+            message="Internal server error during PDF generation"
+        )
+
+
 @router.get("/tools/available")
 async def get_available_tools():
     """
@@ -172,6 +274,13 @@ async def get_available_tools():
             "endpoints": [
                 "POST /api/admin/load-data",
                 "GET /api/admin/data-info"
+            ]
+        },
+        "pdf_generation": {
+            "name": "PDF Generation",
+            "description": "Generate payoff statement PDFs for loans",
+            "endpoints": [
+                "POST /api/generate-pdf"
             ]
         }
     }

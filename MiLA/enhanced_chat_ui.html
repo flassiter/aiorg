@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MiLA Enhanced Demo Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: #f5f7fa;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .header .subtitle {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-top: 0.25rem;
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            gap: 1rem;
+            padding: 1rem;
+            min-height: 0;
+        }
+
+        .chat-panel {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            min-height: 0;
+        }
+
+        .debug-panel {
+            flex: 1;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 1rem;
+            display: none;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .debug-panel.active {
+            display: flex;
+        }
+
+        .controls {
+            padding: 1rem;
+            border-bottom: 1px solid #e0e6ed;
+            background: #f8f9fa;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .control-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .control-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .server-input {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid #d1d9e0;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .toggle {
+            position: relative;
+            width: 50px;
+            height: 24px;
+            background: #ccc;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .toggle.active {
+            background: #3498db;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        .toggle.active .toggle-slider {
+            transform: translateX(26px);
+        }
+
+        .conversation {
+            flex: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            min-height: 0;
+        }
+
+        .message {
+            margin-bottom: 1.5rem;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            text-align: right;
+        }
+
+        .message.assistant {
+            text-align: left;
+        }
+
+        .message-bubble {
+            display: inline-block;
+            max-width: 80%;
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            word-wrap: break-word;
+        }
+
+        .message.user .message-bubble {
+            background: #3498db;
+            color: white;
+        }
+
+        .message.assistant .message-bubble {
+            background: #ecf0f1;
+            color: #2c3e50;
+        }
+
+        .progress-indicator {
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .progress-indicator.show {
+            display: flex;
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #ddd;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .input-area {
+            padding: 1rem;
+            border-top: 1px solid #e0e6ed;
+            background: #f8f9fa;
+            border-radius: 0 0 8px 8px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 0.75rem;
+            border: 1px solid #d1d9e0;
+            border-radius: 6px;
+            font-size: 1rem;
+            resize: none;
+            min-height: 44px;
+            max-height: 120px;
+        }
+
+        .send-button {
+            padding: 0.75rem 1.5rem;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .send-button:hover:not(:disabled) {
+            background: #2980b9;
+        }
+
+        .send-button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+
+        .examples {
+            margin-top: 1rem;
+        }
+
+        .examples h4 {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .example-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 0.5rem;
+        }
+
+        .example {
+            padding: 0.5rem 0.75rem;
+            background: #ecf0f1;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .example:hover {
+            background: #d5dbdb;
+            border-color: #95a5a6;
+        }
+
+        .debug-content {
+            flex: 1;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 1rem;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            min-height: 0;
+        }
+
+        .debug-header {
+            font-weight: bold;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #34495e;
+            color: #3498db;
+        }
+
+        .tool-call {
+            background: #34495e;
+            border-left: 3px solid #3498db;
+            padding: 0.5rem;
+            margin: 0.5rem 0;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .tool-result {
+            background: #27ae60;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            margin-top: 0.25rem;
+        }
+
+        .tool-error {
+            background: #e74c3c;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            margin-top: 0.25rem;
+        }
+
+        .chain-info {
+            background: #8e44ad;
+            color: white;
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin: 0.5rem 0;
+        }
+
+        .context-info {
+            background: #f39c12;
+            color: white;
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin: 0.5rem 0;
+        }
+
+        .loan-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            background: white;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .loan-table th,
+        .loan-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        .loan-table th {
+            background: #34495e;
+            color: white;
+            font-weight: 600;
+        }
+
+        .loan-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .pdf-link {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: #e74c3c;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 0.5rem 0;
+            transition: background 0.2s;
+        }
+
+        .pdf-link:hover {
+            background: #c0392b;
+        }
+
+        .email-confirmation {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+
+        .confirmation-buttons {
+            margin-top: 1rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .confirm-btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .confirm-yes {
+            background: #27ae60;
+            color: white;
+        }
+
+        .confirm-no {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 0.5rem;
+        }
+
+        .status-pending { background: #f39c12; }
+        .status-in-progress { background: #3498db; }
+        .status-completed { background: #27ae60; }
+        .status-failed { background: #e74c3c; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🤖 MiLA - Enhanced Demo Interface</h1>
+        <div class="subtitle">Machine Intelligence Loan Assistant with Tool Chaining & Context Management</div>
+    </div>
+
+    <div class="main-container">
+        <div class="chat-panel">
+            <div class="controls">
+                <div class="control-row">
+                    <label>Server URL:</label>
+                    <input type="text" id="serverUrl" class="server-input" value="http://localhost:8000">
+                </div>
+                <div class="control-row">
+                    <div class="toggle-container">
+                        <label>Debug Mode:</label>
+                        <div class="toggle" id="debugToggle">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+                    <button id="clearSession" style="padding: 0.5rem 1rem; background: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer;">Clear Session</button>
+                    <span id="sessionStatus" style="margin-left: 1rem; color: #27ae60; font-size: 0.9rem; display: none;">
+                        📌 <span id="sessionInfo"></span>
+                    </span>
+                </div>
+            </div>
+
+            <div class="conversation" id="conversation">
+                <div class="message assistant">
+                    <div class="message-bubble">
+                        👋 Welcome to MiLA! I can help you with loan processing tasks including:
+                        <br>• Retrieving loan information
+                        <br>• Calculating payoff amounts  
+                        <br>• Generating PDF statements
+                        <br>• Sending emails (simulated)
+                        <br><br>Try one of the examples below or ask me anything!
+                    </div>
+                </div>
+            </div>
+
+            <div class="progress-indicator" id="progressIndicator">
+                <div class="spinner"></div>
+                <span id="progressText">Processing your request...</span>
+            </div>
+
+            <div class="input-area">
+                <div class="input-row">
+                    <textarea id="messageInput" class="message-input" placeholder="Ask me about loans, payoffs, or try: 'Process complete payoff for loan 69253358'"></textarea>
+                    <button id="sendButton" class="send-button">Send</button>
+                </div>
+
+                <div class="examples">
+                    <h4>Example Commands:</h4>
+                    <div class="example-grid">
+                        <div class="example">Retrieve loan information for loan id 69253358</div>
+                        <div class="example">Calculate payoff for this loan</div>
+                        <div class="example">Create a loan payoff document</div>
+                        <div class="example">Send this payoff information to email</div>
+                        <div class="example">Process complete payoff for Mark Wilson</div>
+                        <div class="example">Show me loan information for Steven Lopez</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="debug-panel" id="debugPanel">
+            <div class="debug-header">🔧 Debug Information</div>
+            <div class="debug-content" id="debugContent">
+                Debug mode is enabled. Tool calls, timing, and context information will appear here.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSessionId = null;
+        let debugMode = false;
+        let pendingEmailConfirmation = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            loadSessionFromStorage();
+            // Generate session ID if none exists
+            if (!currentSessionId) {
+                currentSessionId = generateSessionId();
+                saveSessionToStorage();
+                if (debugMode) {
+                    addDebugLog(`New session created: ${currentSessionId}`, 'context');
+                }
+            }
+            updateSessionStatus();
+        });
+
+        function generateSessionId() {
+            return 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+        }
+
+        function setupEventListeners() {
+            // Toggle debug mode
+            document.getElementById('debugToggle').addEventListener('click', toggleDebugMode);
+            
+            // Send message
+            document.getElementById('sendButton').addEventListener('click', sendMessage);
+            document.getElementById('messageInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            // Clear session
+            document.getElementById('clearSession').addEventListener('click', clearSession);
+
+            // Example clicks
+            document.querySelectorAll('.example').forEach(example => {
+                example.addEventListener('click', function() {
+                    document.getElementById('messageInput').value = this.textContent;
+                });
+            });
+        }
+
+        function toggleDebugMode() {
+            const toggle = document.getElementById('debugToggle');
+            const panel = document.getElementById('debugPanel');
+            
+            debugMode = !debugMode;
+            
+            if (debugMode) {
+                toggle.classList.add('active');
+                panel.classList.add('active');
+                addDebugLog('🔧 Debug mode enabled');
+            } else {
+                toggle.classList.remove('active');
+                panel.classList.remove('active');
+            }
+            
+            saveSessionToStorage();
+        }
+
+        function addDebugLog(message, type = 'info') {
+            if (!debugMode) return;
+            
+            const debugContent = document.getElementById('debugContent');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            let className = '';
+            switch (type) {
+                case 'tool': className = 'tool-call'; break;
+                case 'result': className = 'tool-result'; break;
+                case 'error': className = 'tool-error'; break;
+                case 'chain': className = 'chain-info'; break;
+                case 'context': className = 'context-info'; break;
+            }
+            
+            const logEntry = document.createElement('div');
+            if (className) logEntry.className = className;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            
+            debugContent.appendChild(logEntry);
+            debugContent.scrollTop = debugContent.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            
+            if (!message) return;
+
+            // Check for email confirmation response
+            if (pendingEmailConfirmation && (message.toLowerCase() === 'y' || message.toLowerCase() === 'yes')) {
+                await handleEmailConfirmation(true);
+                return;
+            } else if (pendingEmailConfirmation && (message.toLowerCase() === 'n' || message.toLowerCase() === 'no')) {
+                await handleEmailConfirmation(false);
+                return;
+            }
+
+            // Add user message to conversation
+            addMessage(message, 'user');
+            messageInput.value = '';
+            
+            // Show progress indicator
+            showProgress();
+            
+            if (debugMode) {
+                addDebugLog(`Sending message: "${message}"`, 'info');
+                if (currentSessionId) {
+                    addDebugLog(`Session ID: ${currentSessionId}`, 'context');
+                }
+            }
+
+            try {
+                const serverUrl = document.getElementById('serverUrl').value;
+                const requestData = {
+                    message: message,
+                    debug_mode: debugMode
+                };
+                
+                if (currentSessionId) {
+                    requestData.session_id = currentSessionId;
+                }
+
+                const response = await fetch(`${serverUrl}/api/chat/message`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                const data = await response.json();
+                
+                // Store session ID
+                if (data.session_id) {
+                    currentSessionId = data.session_id;
+                    saveSessionToStorage();
+                }
+
+                hideProgress();
+                
+                if (debugMode) {
+                    addDebugLog(`Response received. Success: ${data.success}`, 'result');
+                    if (data.tool_calls && data.tool_calls.length > 0) {
+                        addDebugLog(`Tools executed: ${data.tool_calls.map(t => t.tool_name).join(', ')}`, 'tool');
+                    }
+                    if (data.chain_id) {
+                        addDebugLog(`Chain executed: ${data.chain_id}`, 'chain');
+                    }
+                }
+
+                // Process response
+                processResponse(data);
+                
+                // Update session status indicator
+                setTimeout(updateSessionStatus, 500);
+
+            } catch (error) {
+                hideProgress();
+                
+                // Enhanced error handling with user-friendly messages
+                let errorMessage = '❌ ';
+                let suggestion = '';
+                
+                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                    errorMessage += '**Connection Error**\n\nCannot reach the server. Please check:\n';
+                    errorMessage += '• The MiLA service is running\n';
+                    errorMessage += '• Server URL is correct: ' + document.getElementById('serverUrl').value;
+                    suggestion = 'Make sure to start the server with: python -m src.main';
+                } else if (error.message.includes('404')) {
+                    errorMessage += '**Endpoint Not Found**\n\nThe server API endpoint was not found.';
+                    suggestion = 'Check that you\'re using the correct server URL.';
+                } else if (error.message.includes('500')) {
+                    errorMessage += '**Server Error**\n\nThe server encountered an internal error.';
+                    suggestion = 'Check the server console for error details.';
+                } else if (error.message.includes('session') || error.message.includes('Session')) {
+                    errorMessage += '**Session Error**\n\n' + error.message;
+                    suggestion = 'Click "Clear Session" to start with a fresh session.';
+                } else {
+                    errorMessage += error.message;
+                }
+                
+                addMessage(errorMessage, 'assistant');
+                
+                if (suggestion) {
+                    addMessage('💡 ' + suggestion, 'assistant');
+                }
+                
+                if (debugMode) {
+                    addDebugLog(`Request failed: ${error.message}`, 'error');
+                    if (error.stack) {
+                        addDebugLog(`Stack trace: ${error.stack}`, 'error');
+                    }
+                }
+            }
+        }
+
+        function processResponse(data) {
+            if (data.success) {
+                // Parse message for structured data
+                const formattedMessage = formatResponseMessage(data);
+                addMessage(formattedMessage, 'assistant');
+
+                // Check for email confirmation requests
+                checkForEmailConfirmation(data);
+
+            } else {
+                addMessage(data.message || 'An error occurred', 'assistant');
+            }
+        }
+
+        function formatResponseMessage(data) {
+            let html = data.message;
+
+            // Convert markdown-style formatting to HTML
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            html = html.replace(/## (.*?)\n/g, '<h3>$1</h3>');
+            // Convert markdown links to HTML links
+            html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" style="color: #3498db; text-decoration: none;">$1</a>');
+            html = html.replace(/\n/g, '<br>');
+
+            // Add loan data table if present
+            if (data.tool_calls) {
+                const loanInfoCall = data.tool_calls.find(call => call.tool_name === 'get_loan_info');
+                if (loanInfoCall && loanInfoCall.result && loanInfoCall.result.data) {
+                    const loanData = loanInfoCall.result.data;
+                    html += createLoanTable(loanData);
+                }
+
+                // Add PDF download links
+                const pdfCall = data.tool_calls.find(call => call.tool_name === 'generate_pdf');
+                if (pdfCall && pdfCall.result && pdfCall.result.data) {
+                    const pdfData = pdfCall.result.data;
+                    html += `<br><a href="${pdfData.download_url}" class="pdf-link" target="_blank">📄 Download ${pdfData.filename}</a>`;
+                }
+            }
+
+            return html;
+        }
+
+        function createLoanTable(loanData) {
+            return `
+                <table class="loan-table">
+                    <thead>
+                        <tr>
+                            <th>Field</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Loan Number</td><td>${loanData.loan_number}</td></tr>
+                        <tr><td>Borrower Name</td><td>${loanData.borrower_name}</td></tr>
+                        <tr><td>Principal Balance</td><td>$${parseFloat(loanData.principal_balance).toLocaleString('en-US', {minimumFractionDigits: 2})}</td></tr>
+                        <tr><td>Interest Rate</td><td>${parseFloat(loanData.annual_interest_rate).toFixed(2)}%</td></tr>
+                        <tr><td>Last Payment Date</td><td>${loanData.last_payment_date}</td></tr>
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function checkForEmailConfirmation(data) {
+            // Check if response contains email confirmation request
+            if (data.message && data.message.includes('(Y/N)')) {
+                const emailMatch = data.message.match(/Send.*?to\s+([^\s]+@[^\s]+).*?\(Y\/N\)/i);
+                if (emailMatch) {
+                    pendingEmailConfirmation = {
+                        email: emailMatch[1],
+                        message: data.message
+                    };
+                    
+                    // Add confirmation UI
+                    const confirmationHtml = `
+                        <div class="email-confirmation">
+                            <strong>📧 Email Confirmation Required</strong><br>
+                            ${data.message}
+                            <div class="confirmation-buttons">
+                                <button class="confirm-btn confirm-yes" onclick="handleEmailConfirmation(true)">Yes</button>
+                                <button class="confirm-btn confirm-no" onclick="handleEmailConfirmation(false)">No</button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    const lastMessage = document.querySelector('.conversation .message:last-child .message-bubble');
+                    if (lastMessage) {
+                        lastMessage.innerHTML += confirmationHtml;
+                    }
+                }
+            }
+        }
+
+        async function handleEmailConfirmation(confirmed) {
+            if (!pendingEmailConfirmation) return;
+
+            const response = confirmed ? 'Y' : 'N';
+            addMessage(response, 'user');
+
+            if (confirmed) {
+                showProgress('Sending email...');
+                
+                try {
+                    // Send actual email confirmation
+                    const serverUrl = document.getElementById('serverUrl').value;
+                    const emailResponse = await fetch(`${serverUrl}/api/chat/message`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            message: 'Y',
+                            session_id: currentSessionId,
+                            debug_mode: debugMode
+                        })
+                    });
+
+                    const emailData = await emailResponse.json();
+                    hideProgress();
+                    
+                    if (emailData.success) {
+                        addMessage('✅ Email sent successfully!', 'assistant');
+                        if (debugMode) {
+                            addDebugLog('Email sent via simulation service', 'result');
+                        }
+                    } else {
+                        addMessage('❌ Failed to send email: ' + emailData.message, 'assistant');
+                    }
+
+                } catch (error) {
+                    hideProgress();
+                    addMessage('❌ Error sending email: ' + error.message, 'assistant');
+                }
+            } else {
+                addMessage('Email sending cancelled.', 'assistant');
+            }
+
+            pendingEmailConfirmation = null;
+        }
+
+        function addMessage(content, sender) {
+            const conversation = document.getElementById('conversation');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = 'message-bubble';
+            bubbleDiv.innerHTML = content;
+            
+            messageDiv.appendChild(bubbleDiv);
+            conversation.appendChild(messageDiv);
+            conversation.scrollTop = conversation.scrollHeight;
+        }
+
+        function showProgress(text = 'Processing your request...') {
+            const indicator = document.getElementById('progressIndicator');
+            const progressText = document.getElementById('progressText');
+            progressText.textContent = text;
+            indicator.classList.add('show');
+            
+            // Disable send button
+            document.getElementById('sendButton').disabled = true;
+        }
+
+        function hideProgress() {
+            const indicator = document.getElementById('progressIndicator');
+            indicator.classList.remove('show');
+            
+            // Enable send button
+            document.getElementById('sendButton').disabled = false;
+        }
+
+        async function clearSession() {
+            const oldSessionId = currentSessionId;
+            
+            // Call backend to clear session
+            if (oldSessionId) {
+                try {
+                    const serverUrl = document.getElementById('serverUrl').value;
+                    const response = await fetch(`${serverUrl}/api/chat/session/${oldSessionId}`, {
+                        method: 'DELETE'
+                    });
+                    const data = await response.json();
+                    if (debugMode) {
+                        addDebugLog(`Session cleared on server: ${data.message}`, 'info');
+                    }
+                } catch (error) {
+                    console.error('Failed to clear session on server:', error);
+                }
+            }
+            
+            // Generate new session ID
+            currentSessionId = generateSessionId();
+            pendingEmailConfirmation = null;
+            saveSessionToStorage();
+            
+            // Clear conversation
+            const conversation = document.getElementById('conversation');
+            conversation.innerHTML = `
+                <div class="message assistant">
+                    <div class="message-bubble">
+                        🔄 Session cleared! New session ID: <code>${currentSessionId.substring(0, 20)}...</code>
+                        <br><br>
+                        You can start fresh. I won't remember previous loan information until you load a new loan.
+                    </div>
+                </div>
+            `;
+            
+            // Clear debug log
+            if (debugMode) {
+                document.getElementById('debugContent').innerHTML = 'Debug mode is enabled. Tool calls, timing, and context information will appear here.';
+                addDebugLog(`New session created: ${currentSessionId}`, 'context');
+            }
+            
+            updateSessionStatus();
+        }
+
+        async function updateSessionStatus() {
+            if (!currentSessionId) return;
+            
+            try {
+                const serverUrl = document.getElementById('serverUrl').value;
+                const response = await fetch(`${serverUrl}/api/chat/session/${currentSessionId}/status`);
+                const data = await response.json();
+                
+                const statusElement = document.getElementById('sessionStatus');
+                const infoElement = document.getElementById('sessionInfo');
+                
+                if (data.status !== 'not_found' && data.cached_loan) {
+                    // Update UI to show cached loan info
+                    const statusInfo = [];
+                    if (data.cached_loan.loan_number) {
+                        statusInfo.push(`Loan ${data.cached_loan.loan_number}`);
+                    }
+                    if (data.cached_loan.borrower_name) {
+                        statusInfo.push(data.cached_loan.borrower_name);
+                    }
+                    
+                    if (statusInfo.length > 0) {
+                        // Show cached loan indicator in UI
+                        statusElement.style.display = 'inline';
+                        infoElement.textContent = statusInfo.join(' - ');
+                        
+                        if (debugMode) {
+                            addDebugLog(`Session has cached data: ${statusInfo.join(', ')}`, 'context');
+                        }
+                    } else {
+                        statusElement.style.display = 'none';
+                    }
+                } else {
+                    statusElement.style.display = 'none';
+                }
+            } catch (error) {
+                // Session status check failed, not critical
+                console.debug('Session status check failed:', error);
+                document.getElementById('sessionStatus').style.display = 'none';
+            }
+        }
+
+        function saveSessionToStorage() {
+            const sessionData = {
+                sessionId: currentSessionId,
+                debugMode: debugMode
+            };
+            localStorage.setItem('milaSession', JSON.stringify(sessionData));
+        }
+
+        function loadSessionFromStorage() {
+            const stored = localStorage.getItem('milaSession');
+            if (stored) {
+                try {
+                    const sessionData = JSON.parse(stored);
+                    currentSessionId = sessionData.sessionId;
+                    
+                    if (sessionData.debugMode) {
+                        toggleDebugMode();
+                    }
+                } catch (e) {
+                    console.warn('Failed to load session from storage:', e);
+                }
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MiLA Chat Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        #message { width: 100%; height: 100px; margin: 10px 0; }
+        #response { border: 1px solid #ccc; padding: 10px; margin: 10px 0; background: #f9f9f9; white-space: pre-wrap; }
+        button { padding: 10px 20px; margin: 5px; }
+        .examples { margin: 20px 0; }
+        .example { margin: 5px 0; padding: 5px; background: #e9e9e9; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MiLA Chat Test Interface</h1>
+        
+        <div>
+            <label for="serverUrl">Server URL:</label>
+            <input type="text" id="serverUrl" value="http://192.168.0.XXX:8000" style="width: 300px;">
+        </div>
+        
+        <div>
+            <label for="message">Message:</label>
+            <textarea id="message" placeholder="Enter your message here..."></textarea>
+        </div>
+        
+        <div>
+            <button onclick="sendMessage()">Send Message</button>
+            <button onclick="getModels()">Get Models</button>
+            <button onclick="clearResponse()">Clear</button>
+        </div>
+        
+        <div class="examples">
+            <h3>Example Messages (click to use):</h3>
+            <div class="example" onclick="setMessage(this.textContent)">Show me loan information for Mark Wilson</div>
+            <div class="example" onclick="setMessage(this.textContent)">Calculate payoff for loan 69253358</div>
+            <div class="example" onclick="setMessage(this.textContent)">Get loan info for 69253358, calculate payoff, and create PDF</div>
+            <div class="example" onclick="setMessage(this.textContent)">Process payoff for Mark Wilson</div>
+        </div>
+        
+        <div>
+            <h3>Response:</h3>
+            <div id="response"></div>
+        </div>
+    </div>
+
+    <script>
+        function setMessage(text) {
+            document.getElementById('message').value = text;
+        }
+        
+        function clearResponse() {
+            document.getElementById('response').textContent = '';
+        }
+        
+        async function sendMessage() {
+            const serverUrl = document.getElementById('serverUrl').value;
+            const message = document.getElementById('message').value;
+            const responseDiv = document.getElementById('response');
+            
+            if (!message.trim()) {
+                alert('Please enter a message');
+                return;
+            }
+            
+            try {
+                responseDiv.textContent = 'Sending request...';
+                
+                const response = await fetch(`${serverUrl}/api/chat/message`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+                
+                const data = await response.json();
+                responseDiv.textContent = JSON.stringify(data, null, 2);
+                
+            } catch (error) {
+                responseDiv.textContent = `Error: ${error.message}`;
+            }
+        }
+        
+        async function getModels() {
+            const serverUrl = document.getElementById('serverUrl').value;
+            const responseDiv = document.getElementById('response');
+            
+            try {
+                responseDiv.textContent = 'Getting models...';
+                
+                const response = await fetch(`${serverUrl}/api/chat/models`);
+                const data = await response.json();
+                responseDiv.textContent = JSON.stringify(data, null, 2);
+                
+            } catch (error) {
+                responseDiv.textContent = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

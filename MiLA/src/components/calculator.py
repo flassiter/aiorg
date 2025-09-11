@@ -2,7 +2,7 @@
 Calculation engine for loan payoff calculations.
 """
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional
 
@@ -108,12 +108,14 @@ class PayoffCalculator:
             # Handle edge case: zero balance
             if loan.principal_balance == 0:
                 logger.info(f"Zero balance loan {loan.loan_number}, returning zero payoff")
+                good_through_date = calculation_date + timedelta(days=10)
                 return PayoffCalculation(
                     loan_number=loan.loan_number,
                     principal_balance=Decimal('0.00'),
                     interest_accrued=Decimal('0.00'),
                     total_payoff=Decimal('0.00'),
                     calculation_date=calculation_date,
+                    good_through_date=good_through_date,
                     days_since_payment=cls.days_between_payments(loan.last_payment_date, calculation_date)
                 )
             
@@ -123,12 +125,14 @@ class PayoffCalculator:
             # Handle edge case: same day as payment (no accrued interest)
             if days_since_payment == 0:
                 logger.info(f"Same day calculation for loan {loan.loan_number}, no accrued interest")
+                good_through_date = calculation_date + timedelta(days=10)
                 return PayoffCalculation(
                     loan_number=loan.loan_number,
                     principal_balance=loan.principal_balance,
                     interest_accrued=Decimal('0.00'),
                     total_payoff=loan.principal_balance,
                     calculation_date=calculation_date,
+                    good_through_date=good_through_date,
                     days_since_payment=0
                 )
             
@@ -150,12 +154,14 @@ class PayoffCalculator:
             logger.info(f"Payoff calculated for loan {loan.loan_number}: principal={loan.principal_balance}, "
                        f"interest={interest_accrued}, total={total_payoff}, days={days_since_payment}")
             
+            good_through_date = calculation_date + timedelta(days=10)
             return PayoffCalculation(
                 loan_number=loan.loan_number,
                 principal_balance=loan.principal_balance,
                 interest_accrued=interest_accrued,
                 total_payoff=total_payoff,
                 calculation_date=calculation_date,
+                good_through_date=good_through_date,
                 days_since_payment=days_since_payment
             )
             

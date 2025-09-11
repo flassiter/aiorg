@@ -16,6 +16,7 @@ class PayoffCalculation(BaseModel):
     interest_accrued: Decimal = Field(..., ge=0, decimal_places=2, description="Interest accrued since last payment")
     total_payoff: Decimal = Field(..., ge=0, decimal_places=2, description="Total payoff amount")
     calculation_date: date = Field(..., description="Date of calculation")
+    good_through_date: date = Field(..., description="Date until which the payoff amount is valid")
     days_since_payment: int = Field(..., ge=0, description="Days since last payment")
 
     @validator('loan_number')

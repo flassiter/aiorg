@@ -16,6 +16,7 @@ class LoanRecord(BaseModel):
     principal_balance: Decimal = Field(..., ge=0, decimal_places=2, description="Principal balance in dollars")
     annual_interest_rate: Decimal = Field(..., ge=0, le=100, decimal_places=2, description="Annual interest rate as percentage")
     last_payment_date: date = Field(..., description="Date of last payment")
+    email_address: Optional[str] = Field(None, description="Borrower email address")
 
     @validator('loan_number')
     def validate_loan_number(cls, v):

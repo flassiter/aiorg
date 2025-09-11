@@ -7,11 +7,13 @@ from datetime import date
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, status
-# CORS middleware removed for PoC simplicity
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 # Authentication removed for PoC simplicity
 from .api.tools import router as tools_router
+from .api.files import router as files_router
+from .api.chat import router as chat_router
 from .components.data_access import loan_data_access, DataAccessError
 from .models.loan import (
     HealthCheckResponse,
@@ -59,10 +61,19 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS middleware removed for PoC simplicity
+# Add CORS middleware for browser access
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins for demo
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Include routers
 app.include_router(tools_router)
+app.include_router(files_router)
+app.include_router(chat_router)
 
 
 # Exception handlers
@@ -219,12 +230,38 @@ async def get_data_info():
 
 
 if __name__ == "__main__":
+    import argparse
     import uvicorn
     
+    parser = argparse.ArgumentParser(description="MiLA API Server")
+    parser.add_argument(
+        "--model", 
+        choices=["7b", "14b", "32b", "coder-7b"],
+        default="14b",
+        help="Qwen2.5 model size to use (default: 14b)"
+    )
+    parser.add_argument("--host", default="0.0.0.0", help="Host to bind to")
+    parser.add_argument("--port", type=int, default=8000, help="Port to bind to")
+    parser.add_argument("--reload", action="store_true", help="Enable auto-reload")
+    
+    args = parser.parse_args()
+    
+    # Set environment variable for model selection
+    import os
+    model_mapping = {
+        "7b": "qwen2.5:7b-instruct",
+        "14b": "qwen2.5:14b-instruct", 
+        "32b": "qwen2.5:32b-instruct",
+        "coder-7b": "qwen2.5-coder:7b-instruct"
+    }
+    os.environ["MILA_MODEL_SIZE"] = model_mapping[args.model]
+    
+    print(f"Starting MiLA API with model: {model_mapping[args.model]}")
+    
     uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
+        "src.main:app",
+        host=args.host,
+        port=args.port,
+        reload=args.reload,
         log_level="info"
     )

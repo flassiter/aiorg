@@ -62,6 +62,9 @@ class LoanDataAccess:
                 'Annual Interest Rate', 'Last Payment Date'
             ]
             
+            # Optional columns
+            optional_columns = ['Email Address']
+            
             missing_columns = [col for col in required_columns if col not in df.columns]
             if missing_columns:
                 raise DataAccessError(f"Missing required columns: {missing_columns}")
@@ -85,6 +88,10 @@ class LoanDataAccess:
                         'annual_interest_rate': Decimal(str(row['Annual Interest Rate'])),
                         'last_payment_date': pd.to_datetime(row['Last Payment Date']).date()
                     }
+                    
+                    # Add optional email address if available
+                    if 'Email Address' in df.columns and not pd.isna(row['Email Address']):
+                        loan_data['email_address'] = str(row['Email Address']).strip()
                     
                     # Validate with Pydantic model
                     loan = LoanRecord(**loan_data)
@@ -126,8 +133,19 @@ class LoanDataAccess:
         Returns:
             LoanRecord if found, None otherwise
         """
-        if not self._loans:
-            return None
+        # Auto-load default data if no data is loaded
+        if not self.is_data_loaded():
+            sample_data_path = Path(__file__).parent.parent.parent / "data" / "sample_loans.xlsx"
+            if sample_data_path.exists():
+                try:
+                    await self.load_loan_data(str(sample_data_path))
+                    logger.info(f"Auto-loaded {self.get_loan_count()} loan records for search")
+                except DataAccessError as e:
+                    logger.warning(f"Could not auto-load sample data: {str(e)}")
+                    return None
+            else:
+                logger.warning(f"Sample data file not found at {sample_data_path}")
+                return None
         
         # Normalize input
         loan_number = loan_number.strip()
@@ -151,8 +169,19 @@ class LoanDataAccess:
         Returns:
             LoanRecord if found, None otherwise
         """
-        if not self._loans:
-            return None
+        # Auto-load default data if no data is loaded
+        if not self.is_data_loaded():
+            sample_data_path = Path(__file__).parent.parent.parent / "data" / "sample_loans.xlsx"
+            if sample_data_path.exists():
+                try:
+                    await self.load_loan_data(str(sample_data_path))
+                    logger.info(f"Auto-loaded {self.get_loan_count()} loan records for search")
+                except DataAccessError as e:
+                    logger.warning(f"Could not auto-load sample data: {str(e)}")
+                    return None
+            else:
+                logger.warning(f"Sample data file not found at {sample_data_path}")
+                return None
         
         # Normalize input
         borrower_name = borrower_name.strip().lower()
