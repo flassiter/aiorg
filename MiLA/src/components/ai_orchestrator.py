@@ -18,6 +18,7 @@ from ..tools.loan_service import find_loan, LoanServiceError
 from ..tools.calculation_service import calculate_payoff as calc_payoff, CalculationServiceError
 from ..tools.pdf_service import generate_pdf as gen_pdf, PDFServiceError
 from ..tools.email_service import send_payoff_email, confirm_email_send, EmailServiceError
+from ..tools.biweekly_service import calculate_biweekly_payoff as calc_biweekly, BiweeklyServiceError
 
 logger = logging.getLogger(__name__)
 
@@ -225,7 +226,7 @@ class AIOrchestrator:
                 "type": "function",
                 "function": {
                     "name": "send_email",
-                    "description": "Send payoff information via email to borrower",
+                    "description": "Send payoff information via email to borrower (ONLY use after confirm_email and user approval)",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -258,6 +259,23 @@ class AIOrchestrator:
                         "required": ["email_address"]
                     }
                 }
+            },
+            "calculate_biweekly_payoff": {
+                "type": "function",
+                "function": {
+                    "name": "calculate_biweekly_payoff",
+                    "description": "Calculate bi-weekly payment scenario showing time and interest savings compared to monthly payments",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "loan_identifier": {
+                                "type": "string",
+                                "description": "Loan number or borrower name (optional if using current loan context)"
+                            }
+                        },
+                        "required": []
+                    }
+                }
             }
         }
     
@@ -270,8 +288,9 @@ You have access to the following tools:
 1. get_loan_info(identifier) - Search by loan number or borrower name
 2. calculate_payoff(loan_number, as_of_date=today) - Calculate current payoff amount  
 3. generate_pdf(loan_number, statement_date=today) - Create payoff statement PDF
-4. send_email(email_address, loan_number) - Send payoff information via email
-5. confirm_email(email_address) - Confirm email sending with user
+4. confirm_email(email_address) - ALWAYS use this first to confirm before sending emails
+5. send_email(email_address, loan_number) - Send payoff information via email (ONLY after confirmation)
+6. calculate_biweekly_payoff(loan_identifier) - Calculate bi-weekly payment scenario with time and interest savings
 
 Response Guidelines:
 - Use tools when you need to retrieve, calculate, or generate new information
@@ -281,11 +300,20 @@ Response Guidelines:
 - Use exact loan numbers when available from context
 - When users refer to "this loan", "the loan", or "current loan", use the loan number from the current context
 
+Email Confirmation Rules:
+- ALWAYS use confirm_email() before send_email() - never send emails without confirmation
+- When user requests to send an email, first call confirm_email() with the recipient address
+- Only proceed with send_email() after user confirms with "Y" or "Yes"
+- If user responds "N" or "No" to confirmation, do not send the email
+
 Tool Usage Examples:
 - "Show me loan information for Mark Wilson" → get_loan_info("Mark Wilson")
 - "Calculate payoff for loan 69253358" → get_loan_info("69253358") → calculate_payoff()
 - "Calculate payoff for this loan" → calculate_payoff() (using current loan from context)
 - "Process complete payoff for John Doe" → get_loan_info("John Doe") → calculate_payoff() → generate_pdf()
+- "What if John Doe switched to bi-weekly payments?" → get_loan_info("John Doe") → calculate_biweekly_payoff()
+- "Email payoff statement to borrower" → confirm_email() → (wait for Y/N) → send_email()
+- "Calculate bi-weekly scenario for loan 69253358 and email results" → get_loan_info("69253358") → calculate_biweekly_payoff() → confirm_email() → (wait for Y/N) → send_email()
 
 Direct Response Examples:
 - "What email address is on that loan?" → Answer directly if you have the borrower email in context
@@ -622,6 +650,8 @@ Always respond professionally and include specific details from tool results."""
             return await self._execute_send_email(parameters)
         elif tool_name == "confirm_email":
             return await self._execute_confirm_email(parameters)
+        elif tool_name == "calculate_biweekly_payoff":
+            return await self._execute_calculate_biweekly_payoff(parameters)
         else:
             raise AIOrchestrationError(f"Unknown tool: {tool_name}")
 
@@ -749,13 +779,13 @@ Always respond professionally and include specific details from tool results."""
         # Process each tool result
         for result in results:
             if not result.success:
-                response_parts.append(f"❌ **Error in {result.tool_name}**: {result.error_message}")
+                response_parts.append(f"**Error in {result.tool_name}**: {result.error_message}")
                 continue
                 
             if result.tool_name == "get_loan_info" and result.result:
                 loan_data = result.result
                 response_parts.append(
-                    f"## 📋 Loan Information\n\n"
+                    f"## Loan Information\n\n"
                     f"**Loan Number:** {loan_data['loan_number']}\n"
                     f"**Borrower:** {loan_data['borrower_name']}\n"
                     f"**Principal Balance:** ${loan_data['principal_balance']:,.2f}\n"
@@ -766,7 +796,7 @@ Always respond professionally and include specific details from tool results."""
             elif result.tool_name == "calculate_payoff" and result.result:
                 calc_data = result.result
                 response_parts.append(
-                    f"## 💰 Payoff Calculation\n\n"
+                    f"## Payoff Calculation\n\n"
                     f"**Principal Balance:** ${calc_data['principal_balance']:,.2f}\n"
                     f"**Interest Accrued:** ${calc_data['interest_accrued']:,.2f}\n"
                     f"**Total Payoff Amount:** ${calc_data['total_payoff']:,.2f}\n"
@@ -775,15 +805,28 @@ Always respond professionally and include specific details from tool results."""
                     f"**Days Since Last Payment:** {calc_data['days_since_payment']}"
                 )
                 
+            elif result.tool_name == "calculate_biweekly_payoff" and result.result:
+                biweekly_data = result.result
+                response_parts.append(
+                    f"## Bi-Weekly Payment Analysis\n\n"
+                    f"**Current Monthly Payment:** ${biweekly_data['current_monthly_payment']:,.2f}\n"
+                    f"**Proposed Bi-Weekly Payment:** ${biweekly_data['biweekly_payment_amount']:,.2f}\n\n"
+                    f"**Current Payoff Date:** {biweekly_data['current_payoff_date']}\n"
+                    f"**Bi-Weekly Payoff Date:** {biweekly_data['biweekly_payoff_date']}\n\n"
+                    f"**Time Savings:** {biweekly_data['time_savings_months']} months\n"
+                    f"**Interest Savings:** ${biweekly_data['interest_savings_dollars']:,.2f}\n\n"
+                    f"*By switching to bi-weekly payments, you could save {biweekly_data['time_savings_months']} months and ${biweekly_data['interest_savings_dollars']:,.2f} in interest!*"
+                )
+                
             elif result.tool_name == "generate_pdf" and result.result:
                 pdf_data = result.result
                 # Create full download URL
                 full_download_url = f"{self.server_base_url}{pdf_data['download_url']}"
                 response_parts.append(
-                    f"## 📄 PDF Generated\n\n"
+                    f"## PDF Generated\n\n"
                     f"**Filename:** {pdf_data['filename']}\n"
                     f"**Download:** [Click here to download]({full_download_url})\n\n"
-                    f"✅ Payoff statement PDF has been generated successfully!"
+                    f"Payoff statement PDF has been generated successfully!"
                 )
                 
             elif result.tool_name == "confirm_email" and result.result:
@@ -792,16 +835,16 @@ Always respond professionally and include specific details from tool results."""
                 email_address = email_data.get('email_address', '')
                 
                 if confirmation_msg:
-                    response_parts.append(f"## 📧 Email Confirmation\n\n{confirmation_msg}")
+                    response_parts.append(f"## Email Confirmation\n\n{confirmation_msg}")
                 else:
                     # Fallback formatting if confirmation_message is not available
-                    response_parts.append(f"## 📧 Email Confirmation\n\nSend email to {email_address} (Y/N)?")
+                    response_parts.append(f"## Email Confirmation\n\nSend email to {email_address} (Y/N)?")
                     
             elif result.tool_name == "send_email" and result.result:
                 email_data = result.result.get('data', {})
                 response_parts.append(
-                    f"## 📧 Email Sent\n\n"
-                    f"✅ Email has been sent successfully!"
+                    f"## Email Sent\n\n"
+                    f"Email has been sent successfully!"
                 )
         
         return "\n\n".join(response_parts) if response_parts else "Request completed successfully."
@@ -911,6 +954,41 @@ Always respond professionally and include specific details from tool results."""
         except EmailServiceError as e:
             return ToolResult(
                 tool_name="confirm_email", 
+                parameters=parameters,
+                success=False,
+                error_message=str(e)
+            )
+
+    async def _execute_calculate_biweekly_payoff(self, parameters: Dict[str, Any]) -> ToolResult:
+        """Execute calculate_biweekly_payoff tool."""
+        try:
+            loan_identifier = parameters.get("loan_identifier", "")
+            
+            # Get current loan data from context if no identifier provided
+            current_loan_data = None
+            session_context = parameters.get("session_context")
+            if session_context and session_context.get("current_loan_data"):
+                current_loan_data = session_context["current_loan_data"]
+            
+            # If no identifier and no context data, use current loan number from context
+            if not loan_identifier and session_context and session_context.get("current_loan_number"):
+                loan_identifier = session_context["current_loan_number"]
+            
+            result_data = await calc_biweekly(
+                loan_identifier=loan_identifier if loan_identifier else None,
+                loan_data=current_loan_data
+            )
+            
+            return ToolResult(
+                tool_name="calculate_biweekly_payoff",
+                parameters=parameters,
+                success=True,
+                result=result_data
+            )
+            
+        except BiweeklyServiceError as e:
+            return ToolResult(
+                tool_name="calculate_biweekly_payoff",
                 parameters=parameters,
                 success=False,
                 error_message=str(e)
