@@ -1,0 +1,30 @@
+# AIOrg Configuration File
+# Edit this file to customize application settings and AI models
+
+# Application Settings
+[settings]
+theme = "dark"                          # "dark" | "light" | "system"
+log_level = "DEBUG"                     # "DEBUG" | "INFO" | "WARNING" | "ERROR" | "CRITICAL"
+database_path = "~/.aiorg/aiorg.db"    # Path to SQLite database
+window_width = 1400                     # Initial window width (pixels)
+window_height = 800                     # Initial window height (pixels)
+split_ratio = 0.5                       # Left pane width ratio (0.0-1.0)
+
+# AI Model Definitions
+# Add or remove models as needed. Models appear in dropdown in the order listed.
+
+[[ai_models]]
+name = "Claude"                         # Display name in dropdown
+type = "commercial"                     # "commercial" | "local"
+url = "https://claude.ai/chat"          # URL to load (commercial) or API endpoint (local)
+
+[[ai_models]]
+name = "ChatGPT"
+type = "commercial"
+url = "https://chatgpt.com"
+
+[[ai_models]]
+name = "Ollama - Llama 2"
+type = "local"
+url = "http://localhost:11434"          # Ollama API base URL
+model = "llama2"                        # Model name for Ollama

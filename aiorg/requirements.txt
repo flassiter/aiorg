@@ -1,0 +1,20 @@
+# AIOrg Dependencies
+# Python 3.10+ required
+
+# GUI Framework
+PyQt6>=6.4.0
+PyQt6-WebEngine>=6.4.0
+
+# Markdown rendering
+markdown>=3.4.0
+
+# HTTP client for Ollama API
+requests>=2.31.0
+
+# TOML parsing (Python < 3.11 only)
+tomli>=2.0.0; python_version < '3.11'
+
+# Testing dependencies (optional, for development)
+pytest>=7.0.0
+pytest-qt>=4.0.0
+pytest-mock>=3.10.0
