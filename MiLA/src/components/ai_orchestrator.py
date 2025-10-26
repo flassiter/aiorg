@@ -30,10 +30,10 @@ class AIOrchestrationError(Exception):
 
 class QwenModelSize(str, Enum):
     """Supported Qwen model sizes."""
-    SIZE_7B = "qwen2.5-coder:7b-instruct"  # Use available coder variant
+    SIZE_7B = "qwen2.5:7b-instruct"  # Use available instruct variant
     SIZE_14B = "qwen2.5-coder:14b"  # Use available 14b model
     SIZE_32B = "qwen2.5:32b-instruct"
-    SIZE_CODER_7B = "qwen2.5-coder:7b-instruct"  # Code-focused variant
+    SIZE_CODER_7B = "qwen2.5-coder:7b"  # Code-focused variant
 
 
 class ModelConfig:
@@ -43,7 +43,7 @@ class ModelConfig:
         QwenModelSize.SIZE_7B: {
             "temperature": 0.1,
             "max_tokens": 2048,
-            "timeout": 15.0,
+            "timeout": 120.0,
             "description": "Lightweight 7B model"
         },
         QwenModelSize.SIZE_14B: {
@@ -61,7 +61,7 @@ class ModelConfig:
         QwenModelSize.SIZE_CODER_7B: {
             "temperature": 0.1,
             "max_tokens": 2048,
-            "timeout": 15.0,
+            "timeout": 60.0,
             "description": "Code-focused 7B model"
         }
     }

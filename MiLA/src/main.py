@@ -250,9 +250,9 @@ if __name__ == "__main__":
     import os
     model_mapping = {
         "7b": "qwen2.5:7b-instruct",
-        "14b": "qwen2.5:14b-instruct", 
+        "14b": "qwen2.5-coder:14b", 
         "32b": "qwen2.5:32b-instruct",
-        "coder-7b": "qwen2.5-coder:7b-instruct"
+        "coder-7b": "qwen2.5-coder:7b"
     }
     os.environ["MILA_MODEL_SIZE"] = model_mapping[args.model]
     

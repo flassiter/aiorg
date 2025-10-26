@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MiLA Enhanced Demo Interface</title>
+    <title>MiLA - Mortgage Loan Assistant</title>
     <style>
         * {
             margin: 0;
@@ -434,8 +434,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>🤖 MiLA - Enhanced Demo Interface</h1>
-        <div class="subtitle">Machine Intelligence Loan Assistant with Tool Chaining & Context Management</div>
+        <h1>MiLA - Mortgage Loan Assistant</h1>
     </div>
 
     <div class="main-container">
@@ -460,16 +459,6 @@
             </div>
 
             <div class="conversation" id="conversation">
-                <div class="message assistant">
-                    <div class="message-bubble">
-                        👋 Welcome to MiLA! I can help you with loan processing tasks including:
-                        <br>• Retrieving loan information
-                        <br>• Calculating payoff amounts  
-                        <br>• Generating PDF statements
-                        <br>• Sending emails (simulated)
-                        <br><br>Try one of the examples below or ask me anything!
-                    </div>
-                </div>
             </div>
 
             <div class="progress-indicator" id="progressIndicator">
@@ -479,7 +468,7 @@
 
             <div class="input-area">
                 <div class="input-row">
-                    <textarea id="messageInput" class="message-input" placeholder="Ask me about loans, payoffs, or try: 'Process complete payoff for loan 69253358'"></textarea>
+                    <textarea id="messageInput" class="message-input"></textarea>
                     <button id="sendButton" class="send-button">Send</button>
                 </div>
 
@@ -490,8 +479,6 @@
                         <div class="example">Calculate payoff for this loan</div>
                         <div class="example">Create a loan payoff document</div>
                         <div class="example">Send this payoff information to email</div>
-                        <div class="example">Process complete payoff for Mark Wilson</div>
-                        <div class="example">Show me loan information for Steven Lopez</div>
                     </div>
                 </div>
             </div>
